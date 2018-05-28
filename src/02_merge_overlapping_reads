@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+
+set -eu
+
+# merge sample 1
+singularity exec -B /Volumes img/bbmap_38.00.simg bbmerge.sh \
+    in=output/bbduk_trim/s1_r1.fq.gz \
+    in2=output/bbduk_trim/s1_r2.fq.gz \
+    out=output/bbmerge/s1_merged.fq.gz \
+    outu1=output/bbmerge/s1_r1_unmerged.fq.gz \
+    outu2=output/bbmerge/s1_r2_unmerged.fq.gz \
+    ihist=output/bbmerge/s1_ihist.txt \
+    verystrict=t \
+    adapters=/adapters.fa \
+    &> output/logs/bbmerge_s1.log &
+
+# merge sample 2
+singularity exec -B /Volumes img/bbmap_38.00.simg bbmerge.sh \
+    in=output/bbduk_trim/s2_r1.fq.gz \
+    in2=output/bbduk_trim/s2_r2.fq.gz \
+    out=output/bbmerge/s2_merged.fq.gz \
+    outu1=output/bbmerge/s2_r1_unmerged.fq.gz \
+    outu2=output/bbmerge/s2_r2_unmerged.fq.gz \
+    ihist=output/bbmerge/s2_ihist.txt \
+    verystrict=t \
+    adapters=/adapters.fa \
+    &> output/logs/bbmerge_s2.log &
+
+wait
+
+exit 0
+

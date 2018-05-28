@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+
+set -eu
+
+# run bbduk on sample 1
+singularity exec -B /Volumes img/bbmap_38.00.simg bbduk.sh \
+    in=data/reads/C7NA2ANXX-1865-07-1-1_L006_R1.fastq \
+    in2=data/reads/C7NA2ANXX-1865-07-1-1_L006_R2.fastq \
+    out=output/bbduk_trim/s1_r1.fq.gz \
+    out2=output/bbduk_trim/s1_r2.fq.gz \
+    ref=/adapters.fa \
+    ktrim=r k=23 mink=11 hdist=1 tpe tbo \
+    qtrim=r trimq=15 \
+    &> output/logs/bbduk_s1.log &
+
+# run bbduk on sample 2
+singularity exec -B /Volumes img/bbmap_38.00.simg bbduk.sh \
+    in=data/reads/C7NA2ANXX-1865-08-1-1_L006_R1.fastq \
+    in2=data/reads/C7NA2ANXX-1865-08-1-1_L006_R2.fastq \
+    out=output/bbduk_trim/s2_r1.fq.gz \
+    out2=output/bbduk_trim/s2_r2.fq.gz \
+    ref=/adapters.fa \
+    ktrim=r k=23 mink=11 hdist=1 tpe tbo \
+    qtrim=r trimq=15 \
+    &> output/logs/bbduk_s2.log &
+
+wait
+
+exit 0
+

@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+set -eu
+
+cat output/bbmerge/s1_r1_unmerged.fq.gz \
+    output/bbmerge/s1_merged.fq.gz \
+    > output/bbmerge/s1_r1_all.fq.gz
+
+cat output/bbmerge/s2_r1_unmerged.fq.gz \
+    output/bbmerge/s2_merged.fq.gz \
+    > output/bbmerge/s2_r1_all.fq.gz
+    
