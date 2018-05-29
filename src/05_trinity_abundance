@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+
+set -eu
+
+singularity exec -B /Volumes img/trinity_2.6.6.simg \
+    align_and_estimate_abundance.pl \
+    --transcripts output/trinity/Trinity.fasta \
+    --seqType fq \
+    --est_method RSEM \
+    --output_dir output/trinity_abundance \
+    --aln_method bowtie \
+    --prep_reference \
+    --SS_lib_type RF \
+    --thread_count 20 \
+    --trinity_mode \
+    --left output/bbduk_trim/s1_r1.fq.gz,output/bbduk_trim/s2_r1.fq.gz \
+    --right output/bbduk_trim/s1_r2.fq.gz,output/bbduk_trim/s2_r2.fq.gz \
+    &> output/logs/align_and_estimate_abundance.log
+
+singularity exec -B /Volumes img/trinity_2.6.6.simg \
+    abundance_estimates_to_matrix.pl \
+    --est_method RSEM \
+    --cross_sample_norm none \
+    --out_prefix output/trinity_abundance/RSEM \
+    --gene_trans_map output/trinity/Trinity.fasta.gene_trans_map \
+    output/trinity_abundance/RSEM.isoforms.results \
+    &> output/logs/abundance_estimates_to_matrix.log

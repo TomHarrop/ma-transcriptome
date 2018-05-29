@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+set -eu
+
+BUSCO_CONTAINER="$(readlink -f img/busco_3.0.2.simg)"
+export BUSCO_CONTAINER
+
+(
+mkdir -p output/busco
+cd output/busco || exit 1
+singularity run -B /Volumes "${BUSCO_CONTAINER}" \
+    --in ../trinity/Trinity.fasta \
+    --out all \
+    --lineage ../../data/lineages/hymenoptera_odb9 \
+    --mode transcriptome \
+    --cpu 20 \
+    --species honeybee1 \
+    &>  ../logs/busco_all.log
+)
