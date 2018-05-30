@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import pathlib
+import pathlib2
 
 
 #############
@@ -8,7 +8,7 @@ import pathlib
 #############
 
 def resolve_path(x):
-    return(str(pathlib.Path(x).resolve()))
+    return(str(pathlib2.Path(x).resolve(strict=False)))
 
 
 def separate_input_reads(wildcards):
@@ -56,8 +56,8 @@ rule busco:
     output:
         'output/busco/run_{filter}/full_table_all.tsv'
     log:
-        str(pathlib.Path(resolve_path('output/logs/'),
-                         'busco_{filter}.log'))
+        str(pathlib2.Path(resolve_path('output/logs/'),
+                          'busco_{filter}.log'))
     benchmark:
         'output/benchmark/busco_{filter}.tsv'
     params:
@@ -235,8 +235,11 @@ rule bbmerge:
         'output/benchmark/bbmerge_{sample}.tsv'
     singularity:
         bbduk_container
+    threads:
+        20
     shell:
         'bbmerge.sh '
+        'threads={threads} '
         'in={input.r1} '
         'in2={input.r2} '
         'out={output.merged} '
@@ -261,14 +264,17 @@ rule bbduk_trim:
         'output/benchmark/bbduk_{sample}.tsv'
     singularity:
         bbduk_container
+    threads:
+        20
     shell:
         'bbduk.sh '
+        'threads={threads} '
         'in={input.r1} '
         'in2={input.r2} '
         'out={output.r1} '
         'out2={output.r2} '
         'ref={params.ref} '
-        'ktrim=5 '
+        'ktrim=r '
         'k=23 '
         'mink=11 '
         'hdist=1 '
