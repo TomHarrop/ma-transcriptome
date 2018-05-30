@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
 
+import pathlib
+
 
 #############
 # FUNCTIONS #
 #############
+
+def resolve_path(x):
+    return(str(pathlib.Path(x).resolve()))
+
 
 def separate_input_reads(wildcards):
     if wildcards.sample == 's1':
@@ -25,10 +31,10 @@ read_dir = 'data/reads'
 bbduk_adaptors = '/adapters.fa'
 
 # containers
-bbduk_container = ('shub:// TomHarrop/singularity-containers:'
-                   'bbmap_38.00')
-trinity_container = ('shub:// TomHarrop/singularity-containers:'
-                     'trinity_2.6.6')
+bbduk_container = 'shub://TomHarrop/singularity-containers:bbmap_38.00'
+busco_container = 'shub://TomHarrop/singularity-containers:busco_3.0.2'
+tidyverse_container = 'shub://TomHarrop/singularity-containers:r_3.5.0'
+trinity_container = 'shub://TomHarrop/singularity-containers:trinity_2.6.6'
 
 
 #########
@@ -37,27 +43,98 @@ trinity_container = ('shub:// TomHarrop/singularity-containers:'
 
 rule target:
     input:
-        'output/trinity_abundance/RSEM.isoform.counts.matrix'
+        expand('output/busco/run_{filter}/full_table_all.tsv',
+               filter=['expression', 'length'])
 
 wildcard_constraints:
     sample = 's\d'
+
+rule busco:
+    input:
+        fasta = 'output/filtered_isoforms/isoforms_by_{filter}.fasta',
+        lineage = 'data/lineages/hymenoptera_odb9'
+    output:
+        'output/busco/run_{filter}/full_table_all.tsv'
+    log:
+        str(pathlib.Path(resolve_path('output/logs/'),
+                         'busco_{filter}.log'))
+    benchmark:
+        'output/benchmark/busco_{filter}.tsv'
+    params:
+        wd = 'output/busco',
+        fasta = lambda wildcards, input: resolve_path(input.fasta),
+        lineage = lambda wildcards, input: resolve_path(input.lineage)
+    threads:
+        20
+    singularity:
+        busco_container
+    shell:
+        'cd {params.wd} || exit 1 ; '
+        'run_BUSCO.py '
+        '--force '
+        '--in {params.fasta} '
+        '--out {wildcards.filter} '
+        '--lineage {params.lineage} '
+        '--cpu {threads} '
+        '--species honeybee1 '
+        '--mode transcriptome '
+        '&> {log}'
+
+rule filter_trinity_isoforms:
+    input:
+        fasta = 'output/trinity/Trinity.fasta',
+        isoforms = 'output/filtered_isoforms/isoform_by_{filter}.txt'
+    output:
+        fasta = 'output/filtered_isoforms/isoforms_by_{filter}.fasta'
+    log:
+        'output/logs/filter_isoforms_by_{filter}.log'
+    benchmark:
+        'output/benchmark/filter_isoforms_by_{filter}.tsv'
+    singularity:
+        bbduk_container
+    shell:
+        'filterbyname.sh '
+        'in={input.fasta} '
+        'include=t '
+        'names={input.isoforms} '
+        'out={output.fasta} '
+        '&> {log}'
+
+rule select_trinity_isoforms:
+    input:
+        abundance = 'output/trinity_abundance/RSEM.isoforms.results'
+    output:
+        expression = 'output/filtered_isoforms/isoform_by_expression.txt',
+        length = 'output/filtered_isoforms/isoform_by_length.txt'
+    singularity:
+        tidyverse_container
+    log:
+        'output/logs/select_trinity_isoforms.log'
+    benchmark:
+        'output/benchmark/select_trinity_isoforms.tsv'
+    script:
+        'src/select_trinity_isoforms.R'
 
 rule trinity_abundance_to_matrix:
     input:
         gt_map = 'output/trinity/Trinity.fasta.gene_trans_map',
         abundance = 'output/trinity_abundance/RSEM.isoforms.results'
     output:
-        'output/trinity_abundance/RSEM.isoform.counts.matrix'
+        'output/trinity_abundance/RSEM.isoform.counts.matrix',
+        'output/trinity_abundance/RSEM.isoforms.results'
     params:
         prefix = 'output/trinity_abundance/RSEM'
     singularity:
         trinity_container
     log:
         'output/logs/abundance_estimates_to_matrix.log'
+    benchmark:
+        'output/benchmark/abundance_estimates_to_matrix.tsv'
     shell:
         'abundance_estimates_to_matrix.pl '
         '--est_method RSEM '
         '--cross_sample_norm none '
+        '--out_prefix {params.prefix} '
         '--gene_trans_map {input.gt_map} '
         '{input.abundance} '
         '&> {log}'
@@ -81,6 +158,8 @@ rule trinity_abundance:
         20
     log:
         'output/logs/align_and_estimate_abundance.log'
+    benchmark:
+        'output/benchmark/align_and_estimate_abundance.tsv'
     shell:
         'align_and_estimate_abundance.pl '
         '--transcripts {input.transcripts} '
@@ -116,6 +195,8 @@ rule assemble_transcriptome:
         20
     log:
         'output/logs/trinity.log'
+    benchmark:
+        'output/benchmark/trinity.tsv'
     shell:
         'Trinity '
         '--SS_lib_type RF '
@@ -150,6 +231,8 @@ rule bbmerge:
         ref = bbduk_adaptors
     log:
         'output/logs/bbmerge_{sample}.log'
+    benchmark:
+        'output/benchmark/bbmerge_{sample}.tsv'
     singularity:
         bbduk_container
     shell:
@@ -174,6 +257,8 @@ rule bbduk_trim:
         ref = bbduk_adaptors
     log:
         'output/logs/bbduk_{sample}.log'
+    benchmark:
+        'output/benchmark/bbduk_{sample}.tsv'
     singularity:
         bbduk_container
     shell:
