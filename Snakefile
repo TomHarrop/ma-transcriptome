@@ -43,18 +43,45 @@ trinity_container = 'shub://TomHarrop/singularity-containers:trinity_2.6.6'
 
 rule target:
     input:
-        expand('output/busco/run_{filter}/full_table_all.tsv',
+        expand('output/busco/run_{filter}/full_table_{filter}.tsv',
                filter=['expression', 'length'])
 
 wildcard_constraints:
     sample = 's\d'
+
+rule trinotate:
+    input:
+        fasta = 'output/trinity/Trinity.fasta',
+        blastdb = 'data/db/uniprot_sprot.pep',
+        hmmerdb = 'data/db/Pfam-A.hmm',
+        sqldb = 'data/db/Trinotate.sqlite'
+    output:
+        'output/trinotate/trinotate/trinotate_annotation_report.txt',
+        'output/trinotate/trinotate/Trinotate.sqlite',
+    params:
+        wd = 'output/trinotate'
+    threads:
+        20
+    log:
+        'output/logs/trinotate.log'
+    benchmark:
+        'output/benchmark/trinotate.tsv'
+    shell:
+        'trinotate_pipeline '
+        '--trinity_fasta {input.fasta} '
+        '--blast_db {input.blastdb} '
+        '--hmmer_db {input.hmmerdb} '
+        '--sqlite_db {input.sqldb} '
+        '--outdir {params.wd} '
+        '--threads {threads} '
+        '&> {log}'
 
 rule busco:
     input:
         fasta = 'output/filtered_isoforms/isoforms_by_{filter}.fasta',
         lineage = 'data/lineages/hymenoptera_odb9'
     output:
-        'output/busco/run_{filter}/full_table_all.tsv'
+        'output/busco/run_{filter}/full_table_{filter}.tsv'
     log:
         str(pathlib2.Path(resolve_path('output/logs/'),
                           'busco_{filter}.log'))
